@@ -20,57 +20,55 @@
 #include    <sys/stat.h>
 #include    <string.h>
 
-#define DEFAULT_PORT 12345
+#define DEFAULT_PORT 50000
 
 void process_rq( char *rq, int fd );
 
-main(int ac, char *av[])
+void main(int ac, char *av[])
 {
     int     sock, fd;
     FILE    *fpin;
     char    request[BUFSIZ];
 
-    if ( ac == 1 ){
-        // fprintf(stderr,"usage: server portnum\n");
-        sock = make_server_socket( DEFAULT_PORT );
-    }
-    else{
-        sock = make_server_socket( atoi(av[1]) );
-    }
+    sock = make_server_socket( DEFAULT_PORT );
     
-    if ( sock == -1 ) exit(2);
+    if ( sock == -1 )
+    {
+        printf("Failed to create server socket.. exiting\n");
+        exit(2); //socket allocation failed
+    }
+    else
+    {
+        printf("Listening on port: %d\n", DEFAULT_PORT);
+    }
 
     /* main loop here */
 
+    int fd_client_1;
+    int fd_client_2;
     while(1){
-        printf("test1\n");
-        /* take a call and buffer it */
-        fd = accept( sock, NULL, NULL );
-        fpin = fdopen(fd, "r" );
-        printf("test2\n");
+        /* accept two connections */
+        printf("Waiting for clients to connect..\n");
+        fd_client_1 = accept( sock, NULL, NULL );
+        printf("Accepted 1..\n");
+        fd_client_2 = accept( sock, NULL, NULL );
+        printf("Accepted 2..\n");
 
-        /* read request */
-        fgets(request,BUFSIZ,fpin);
-        printf("got a call: request = %s", request);
-        read_til_crnl(fpin);
+        if(fd_client_1 == -1 || fd_client_2 == -1)
+        {
+            //error
+            printf("Error accepting connections..\n");
+            return;
+        }
+
 
         /* do what client asks */
         process_rq(request, fd);
 
+        printf("Request processed..\n");
+
         fclose(fpin);
     }
-}
-
-/* ------------------------------------------------------ *
-   read_til_crnl(FILE *)
-   skip over all request info until a CRNL is seen
-   ------------------------------------------------------ */
-
-read_til_crnl(FILE *fp)
-{
-    char    buf[BUFSIZ];
-    while( fgets(buf,BUFSIZ,fp) != NULL && strcmp(buf,"\r\n") != 0 )
-        ;
 }
 
 /* ------------------------------------------------------ *
@@ -82,26 +80,12 @@ read_til_crnl(FILE *fp)
 
 void process_rq( char *rq, int fd )
 {
-    char    cmd[BUFSIZ], arg[BUFSIZ];
-
     /* create a new process and return if not the child */
     if ( fork() != 0 )
         return;
 
-    strcpy(arg, "./");      /* precede args with ./ */
-    if ( sscanf(rq, "%s%s", cmd, arg+2) != 2 )
-        return;
-
-    if ( strcmp(cmd,"GET") != 0 )
-        cannot_do(fd);
-    else if ( not_exist( arg ) )
-        do_404(arg, fd );
-    else if ( isadir( arg ) )
-        do_ls( arg, fd );
-    else if ( ends_in_cgi( arg ) )
-        do_exec( arg, fd );
-    else
-        do_cat( arg, fd );
+    printf("I'm a child!\n");
+    // initGame();
 }
 
 /* ------------------------------------------------------ *
